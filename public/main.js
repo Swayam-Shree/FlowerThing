@@ -1,3 +1,4 @@
+// boilerplate stuff
 canvas = document.createElement("canvas");
 canvas.style.width = "100%";
 canvas.style.height = "100%";
@@ -5,7 +6,7 @@ document.body.appendChild(canvas);
 
 const engine = new BABYLON.Engine(canvas);
 const scene = new BABYLON.Scene(engine);
-scene.maxSimultaneousLights = 1;
+scene.maxSimultaneousLights = 1; // so that lights do not overlap (can be canged from console)
 scene.ambientColor = new BABYLON.Color3(1, 1, 1);
 
 const camera = new BABYLON.ArcRotateCamera("camera", 0, 0, 10, new BABYLON.Vector3(0, 0, 0), scene);
@@ -19,27 +20,40 @@ let lights = {
 lights["directional"].setEnabled(false);
 lights["point"].setEnabled(false);
 
-let settings = {
+let settings = { // defaults
 	light: "hemispheric",
 
-	petalCount: 40,
-	petalsInRow: 4,
-	flowerRowHeight: 0.3,
+	petalCount: 40, // total petal count
+	petalsInRow: 4, // petals in each row
+	flowerRowHeight: 0.3, // distance between rows
 	flowerRandomness: 0,
-	petalFoldMag: 0.6
+	petalFoldMag: 0.6 // magnitude of petal fold looks good between -1 to 1
 }
 
+// a cylinder for the center, will replace with a model later
 const flowerCenter = BABYLON.MeshBuilder.CreateCylinder("flowerCenter", { height: 1, diameter: 1}, scene);
 const material = new BABYLON.StandardMaterial("material", scene);
 flowerCenter.material = material;
 
+// loading petal model
 let petalMesh;
 let petalInstances = [];
 BABYLON.SceneLoader.ImportMesh("", "./assets/", "Petal.gltf", scene, (meshes) => {
-	petalMesh = meshes[1];
+	petalMesh = meshes[1]; // index 0 has the root node, and index 1 has the mesh. use root when there are multiple meshes grouped.
 	petalMesh.material = material;
 	petalMesh.isVisible = false;
+	petalMesh.scaling.scaleInPlace(500);
 	updatePetals();
+});
+
+// loading stem model
+let stemMesh;
+BABYLON.SceneLoader.ImportMesh("", "./assets/", "pottedstem.gltf", scene, (meshes) => {
+	stemMesh = meshes[0];
+
+	stemMesh.scaling.scaleInPlace(1300);
+	// stemMesh.position.y = -15.75;
+	updateStem();
 });
 
 function updatePetals() {
@@ -47,11 +61,12 @@ function updatePetals() {
 		return;
 	}
 
-	for (let instance of petalInstances) {
+	for (let instance of petalInstances) { // remove old instances on update
 		instance.dispose();
 	}
 	petalInstances = [];
 
+	// lowering center cylinder and stem
 	let flowerCenterHeight = Math.ceil(settings.petalCount/settings.petalsInRow) * settings.flowerRowHeight;
 	flowerCenter.scaling.y = flowerCenterHeight;
 	flowerCenter.position.y = -flowerCenterHeight/2 + 0.75;
@@ -61,11 +76,10 @@ function updatePetals() {
 	let row = 0;
 
 	for (let i = 0; i < settings.petalCount; ++i) {
-		let petal = petalMesh.createInstance("petal" + i);
+		let petal = petalMesh.createInstance("petal" + i); // using instances for efficiency, you can also use mesh.clone() for more control.
 		petalInstances.push(petal);
-		let cot = new BABYLON.TransformNode("cot" + i);
-		petal.scaling.scaleInPlace(500);
-		petal.rotationQuaternion = null;
+		let cot = new BABYLON.TransformNode("cot" + i); // center of transformation for each petal
+		petal.rotationQuaternion = null; // disable quaternion rotation so that euler angles may be used later
 
 		if (i % settings.petalsInRow === 0) {
 			++row;
@@ -74,6 +88,7 @@ function updatePetals() {
 		}
 		theta += dtheta;
 
+		// move center of transformation to edge of cylinder (radius = 0.5)
 		cot.position.y = -(row - 1) * settings.flowerRowHeight;
 		cot.position.x = 0.5 * Math.cos(theta);
 		cot.position.z = 0.5 * Math.sin(theta);
@@ -84,21 +99,30 @@ function updatePetals() {
 	}
 
 	updatePetalFold(settings.petalFoldMag);
+	updateStem();
 };
 function updatePetalFold(mag){
 	settings.petalFoldMag = mag;
 	for (let petal of petalInstances) {
 		let cot = petal.parent;
 
+		// transform petals away from cylinder so center of transformation may act as a pivot for floding 
 		petal.position.x = (1.5 + settings.petalFoldMag) * Math.cos(petal.theta);
 		petal.position.z = (1.5 + settings.petalFoldMag) * Math.sin(petal.theta);
 
+		// angle petal towards center of transformation and the cylinder center
 		let angle = Math.atan2(cot.position.x, cot.position.z);
 		let toRotate = angle + Math.PI
 		petal.rotation.y = toRotate;
 
+		// fold along axis according to rotation
 		cot.rotation.x = Math.cos(toRotate) * settings.petalFoldMag;
 		cot.rotation.z = -Math.sin(toRotate) * settings.petalFoldMag;
+	}
+}
+function updateStem() {
+	if (stemMesh) {
+		stemMesh.position.y = -settings.flowerRowHeight * Math.ceil(settings.petalCount/settings.petalsInRow) - 16.75;
 	}
 }
 
@@ -171,13 +195,13 @@ function setPetalFoldMag(value) {
 
 let f = 0;
 let petalFoldAnimation = true;
-scene.onBeforeRenderObservable.add(() => {
+scene.onBeforeRenderObservable.add(() => { // gets called each frame right before painting the screen
 	if (petalFoldAnimation) {
 		++f;
 		setPetalFoldMag(Math.sin(f/100));
 	}
 });
-engine.runRenderLoop(function () {
+engine.runRenderLoop(function () { // gets called each frame
 	scene.render();
 });
 
@@ -185,6 +209,7 @@ window.addEventListener("resize", function () {
 	engine.resize();
 });
 
+// helper functions
 function clamp(v, a, b) {
 	return Math.max(a, Math.min(b, v));
 }
