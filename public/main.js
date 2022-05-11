@@ -126,6 +126,64 @@ function updateStem() {
 	}
 }
 
+//wind stuff
+//wind streaks are essentially cylinders, so keep that in mind
+let wind = {
+	count: 10,
+	minSpeed: 3,
+	maxSpeed: 7,
+	minSize: 5,
+	maxSize: 15,
+	minWidth: 0.1,
+	maxWidth: 0.1,
+	minAlpha: 0.1,
+	maxAlpha: 0.3,
+	streaks: [],
+	boundSize: new BABYLON.Vector3(100, 100, 100), // wind streaks exist within this rectangle centered at (0, 0, 0)
+};
+
+wind.rootMesh = new BABYLON.MeshBuilder.CreateCylinder("wind", { height: 1, diameter: wind.width}, scene);
+wind.rootMesh.rotation.z = Math.PI/2;
+let mat = new BABYLON.StandardMaterial("mat", scene);
+mat.alpha = 0.1;
+wind.rootMesh.material = mat;
+wind.rootMesh.isVisible = false;
+
+for (let i = 0; i < wind.count; ++i) {
+	let streak = wind.rootMesh.createInstance("streak" + i);
+	streak.velocity = new BABYLON.Vector3(0, 0, 0);
+	
+	respawnStreak(streak);
+	wind.streaks.push(streak);
+}
+
+function boundContainsStreak(streak) {
+	let pos = streak.position;
+	let size = wind.boundSize;
+	return pos.x > -size.x/2 && pos.x < size.x/2 && pos.y > -size.y/2 && pos.y < size.y/2 && pos.z > -size.z/2 && pos.z < size.z/2;
+}
+function respawnStreak(streak) {
+	let y = (Math.random() - 0.5) * wind.boundSize.y;
+	let z = (Math.random() - 0.5) * wind.boundSize.z;
+	streak.position.set(-wind.boundSize.x/2, y, z);
+
+	streak.material.alpha = randVal(wind.minAlpha, wind.maxAlpha);
+	streak.scaling.y = randVal(wind.minSize, wind.maxSize);
+	streak.scaling.x = randVal(wind.minWidth, wind.maxWidth);
+	streak.scaling.z = randVal(wind.minWidth, wind.maxWidth);
+	streak.velocity.x = randVal(wind.minSpeed, wind.maxSpeed);
+}
+function updateWind() {
+	for (let streak of wind.streaks){
+		if (streak.position){
+			streak.position.addInPlace(streak.velocity);
+		}
+		if (!boundContainsStreak(streak)) {
+			respawnStreak(streak);
+		}
+	}
+}
+
 function setLight(light) {
 	let tempLight = lights[light];
 	if (tempLight){
@@ -200,6 +258,7 @@ scene.onBeforeRenderObservable.add(() => { // gets called each frame right befor
 		++f;
 		setPetalFoldMag(Math.sin(f/100));
 	}
+	updateWind();
 });
 engine.runRenderLoop(function () { // gets called each frame
 	scene.render();
@@ -219,4 +278,10 @@ function rgb2color3(r, g, b) {
 	b = clamp(b, 0, 255)/255;
 
 	return new BABYLON.Color3(r, g, b);
+}
+function randVal(min, max) {
+	return max ? Math.floor(Math.random() * (max - min + 1)) + min : Math.floor(Math.random() * (min + 1));
+}
+function map(v, a, b, c, d) {
+	return (v - a) / (b - a) * (d - c) + c;
 }
