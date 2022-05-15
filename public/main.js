@@ -1,4 +1,3 @@
-// boilerplate stuff
 canvas = document.createElement("canvas");
 canvas.style.width = "100%";
 canvas.style.height = "100%";
@@ -6,7 +5,7 @@ document.body.appendChild(canvas);
 
 const engine = new BABYLON.Engine(canvas);
 const scene = new BABYLON.Scene(engine);
-scene.maxSimultaneousLights = 1; // so that lights do not overlap (can be canged from console)
+scene.maxSimultaneousLights = 1;
 scene.ambientColor = new BABYLON.Color3(1, 1, 1);
 scene.clearColor = new BABYLON.Color3(0, 0.1, 0.1)
 
@@ -56,7 +55,7 @@ function setLightGroundColor(col) {
 class Flower {
 	static flowerCount = 0;
 
-	static createWithStem(x = randVal(-50, 50), y = randVal(-50, 50), z = randVal(-50, 50), centerDiffuseColor = color(255, 255, 0),
+	static createWithStem(x = randVal(-250, 250), y = randVal(-20, 20), z = randVal(-250, 250), centerDiffuseColor = color(255, 255, 0),
 				petalDiffuseColor = color(200, 0, 100), petalCount, petalsInRow, rowHeight, petalRandomness, petalFoldMag) {
 		let flower = new Flower(centerDiffuseColor);
 		flower.initValues(petalCount, petalsInRow, rowHeight, petalRandomness, petalFoldMag);
@@ -68,7 +67,7 @@ class Flower {
 
 		return flower;
 	}
-	static createWithPlatform(x = randVal(-50, 50), y = randVal(-50, 50), z = randVal(-50, 50), centerDiffuseColor = color(255, 255, 0),
+	static createWithPlatform(x = randVal(-250, 250), y = randVal(-20, 20), z = randVal(-250, 250), centerDiffuseColor = color(255, 255, 0),
 			petalDiffuseColor = color(200, 0, 100), platformDiffuseColor = color(0, randVal(50, 255, 0), randVal(50, 255)),
 			platformWidth, platformHeight, platformDepth, petalCount, petalsInRow, rowHeight, petalRandomness, petalFoldMag) {
 		let flower = new Flower(centerDiffuseColor);
@@ -218,29 +217,50 @@ Flower.prototype.dispose = function () {
 
 let petalMesh;
 let stemMesh;
+let cloudMesh;
 
 let flowers = [];
+let clouds = [];
 
 (async function main () {
-	let petalModelData = await BABYLON.SceneLoader.ImportMeshAsync("", "./assets/", "Petal.gltf", scene);
+	let petalModelData = await BABYLON.SceneLoader.ImportMeshAsync("", "./assets/petal/", "Petal.gltf", scene);
 	petalMesh = petalModelData.meshes[1]; // index 1 is the petal mesh, index 0 has the root node
 	petalMesh.isVisible = false;
 	petalMesh.scaling.scaleInPlace(500);
 
-	let stemModelData = await BABYLON.SceneLoader.ImportMeshAsync("", "./assets/", "pottedstem.gltf", scene);
+	let stemModelData = await BABYLON.SceneLoader.ImportMeshAsync("", "./assets/pottedstem/", "pottedstem.gltf", scene);
 	stemMesh = stemModelData.meshes[0];
 	stemMesh.scaling.scaleInPlace(1300);
 	stemModelData.meshes.forEach((mesh) => {mesh.isVisible = false});
 
 	flowers.push(Flower.createWithPlatform(0, 0, 0));
 
-	for (let i = 0; i < 20; ++i) {
+	for (let i = 0; i < 50; ++i) {
 		if (i % 2 === 0) {
 			flowers.push(Flower.createWithPlatform());
 		} else {
 			flowers.push(Flower.createWithStem());
 		}
 	}
+
+	let cloudModelData = await BABYLON.SceneLoader.ImportMeshAsync("", "./assets/cloud/", "cloud.gltf", scene);
+	cloudMesh = cloudModelData.meshes[1];
+	cloudMesh.isVisible = false;
+	cloudMesh.scaling.scaleInPlace(100);
+
+	for (let i = 0; i < 300; ++i) {
+		let instance = cloudMesh.createInstance("cloud" + i);
+		instance.position.x = randVal(-250, 250);
+		instance.position.y = randVal(50, 150);
+		instance.position.z = randVal(-250, 250);
+		instance.scaling.scaleInPlace(randVal(0.3, 1.4));
+		clouds.push(i);
+	}
+
+	let ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 500, height: 500}, scene);
+	ground.position.y = -50;
+	ground.material = new BABYLON.StandardMaterial("groundMaterial", scene);
+	ground.material.diffuseColor = new BABYLON.Color3(0, 0.1, 0);
 })();
 
 engine.runRenderLoop(function () { // gets called each frame
