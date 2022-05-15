@@ -210,9 +210,9 @@ Flower.prototype.setPlatformDiffuseColor = function (color) {
 	this.platform.material.diffuseColor = rgb2color3(color);
 }
 Flower.prototype.dispose = function () {
-	this.flowerCenter.dispose();
-	this.petals.forEach( petal => petal.dispose() );
-	this.platform ? this.platform.dispose : this.stemMesh.dispose();
+	this.flowerCenter.dispose(true, true);
+	this.petals.forEach( petal => petal.dispose(true, true) );
+	this.platform ? this.platform.dispose(true, true) : this.stemMesh.dispose(true, true);
 }
 
 let petalMesh;
@@ -261,6 +261,7 @@ let clouds = [];
 	ground.position.y = -50;
 	ground.material = new BABYLON.StandardMaterial("groundMaterial", scene);
 	ground.material.diffuseColor = new BABYLON.Color3(0, 0.1, 0);
+	
 })();
 
 engine.runRenderLoop(function () { // gets called each frame
