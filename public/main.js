@@ -8,6 +8,7 @@ const engine = new BABYLON.Engine(canvas);
 const scene = new BABYLON.Scene(engine);
 scene.maxSimultaneousLights = 1; // so that lights do not overlap (can be canged from console)
 scene.ambientColor = new BABYLON.Color3(1, 1, 1);
+scene.clearColor = new BABYLON.Color3(0, 0.1, 0.1)
 
 const camera = new BABYLON.ArcRotateCamera("camera", 0, 0, 10, new BABYLON.Vector3(0, 0, 0), scene);
 camera.attachControl(canvas, true);
@@ -56,7 +57,7 @@ class Flower {
 	static flowerCount = 0;
 
 	static createWithStem(x = randVal(-50, 50), y = randVal(-50, 50), z = randVal(-50, 50), centerDiffuseColor = color(255, 255, 0),
-				petalDiffuseColor = color(255, 0, 0), petalCount, petalsInRow, rowHeight, petalRandomness, petalFoldMag) {
+				petalDiffuseColor = color(200, 0, 100), petalCount, petalsInRow, rowHeight, petalRandomness, petalFoldMag) {
 		let flower = new Flower(centerDiffuseColor);
 		flower.initValues(petalCount, petalsInRow, rowHeight, petalRandomness, petalFoldMag);
 		flower.initPetal(petalDiffuseColor);
@@ -67,8 +68,18 @@ class Flower {
 
 		return flower;
 	}
-	static createWithPlatform() {
+	static createWithPlatform(x = randVal(-50, 50), y = randVal(-50, 50), z = randVal(-50, 50), centerDiffuseColor = color(255, 255, 0),
+			petalDiffuseColor = color(200, 0, 100), platformDiffuseColor = color(0, randVal(50, 255, 0), randVal(50, 255)),
+			platformWidth, platformHeight, platformDepth, petalCount, petalsInRow, rowHeight, petalRandomness, petalFoldMag) {
+		let flower = new Flower(centerDiffuseColor);
+		flower.initValues(platformWidth, platformHeight, platformDepth, petalCount, petalsInRow, rowHeight, petalRandomness, petalFoldMag);
+		flower.initPetal(petalDiffuseColor);
+		flower.updatePetal();
+		flower.initPlatform(platformDiffuseColor);
+		flower.updatePlatform();
+		flower.setPosition(x, y, z);
 
+		return flower;
 	}
 
 	constructor(centerDiffuseColor) { // use the color(r, g, b) function
@@ -88,7 +99,11 @@ class Flower {
 		// this.updateStem();
 	}
 }
-Flower.prototype.initValues = function (petalCount = 40, petalsInRow = 4, rowHeight = 0.3, petalRandomness = 0, petalFoldMag = 0.6) {
+Flower.prototype.initValues = function (platformWidth = 5, platformHeight = 1, platformDepth = 5, petalCount = 40, petalsInRow = 4,
+		rowHeight = 0.3, petalRandomness = 0, petalFoldMag = 0.6) {
+	this.platformWidth = platformWidth;
+	this.platformHeight = platformHeight;
+	this.platformDepth = platformDepth;
 	this.petalCount = petalCount;
 	this.petalsInRow = petalsInRow;
 	this.rowHeight = rowHeight;
@@ -170,12 +185,21 @@ Flower.prototype.initStem = function () {
 Flower.prototype.updateStem = function () {
 	this.stemMesh.position.y = -this.rowHeight * (Math.ceil(this.petalCount / this.petalsInRow)) - 16.75;
 }
+Flower.prototype.initPlatform = function (color) {
+	this.platform = BABYLON.MeshBuilder.CreateBox("platform" + Flower.flowerCount, { height: 1, width: 1, depth: 1 }, scene);
+	this.platform.material = new BABYLON.StandardMaterial("platformMaterial" + Flower.flowerCount, scene);
+	this.platform.material.diffuseColor = rgb2color3(color);
+}
+Flower.prototype.updatePlatform = function () {
+	this.platform.scaling.set(this.platformWidth, this.platformHeight, this.platformDepth);
+	this.platform.position.y = -this.rowHeight * (Math.ceil(this.petalCount / this.petalsInRow)) - this.platform.scaling.y/2 + 1;
+}
 Flower.prototype.setPosition = function (x, y, z) {
 	let translate = new BABYLON.Vector3(x, y, z);
 
 	this.flowerCenter.position.addInPlace(translate);
 	this.petals.forEach( petal => petal.parent.position.addInPlace(translate) );
-	this.stemMesh.position.addInPlace(translate);
+	this.platform ? this.platform.position.addInPlace(translate) : this.stemMesh.position.addInPlace(translate);
 }
 Flower.prototype.setPetalDiffuseColor = function (color) {
 	this.petalMesh.material.diffuseColor = rgb2color3(color);
@@ -183,10 +207,13 @@ Flower.prototype.setPetalDiffuseColor = function (color) {
 Flower.prototype.setCenterDiffuseColor = function (color) {
 	this.flowerCenter.material.diffuseColor = rgb2color3(color);
 }
+Flower.prototype.setPlatformDiffuseColor = function (color) {
+	this.platform.material.diffuseColor = rgb2color3(color);
+}
 Flower.prototype.dispose = function () {
 	this.flowerCenter.dispose();
 	this.petals.forEach( petal => petal.dispose() );
-	this.stemMesh.dispose();
+	this.platform ? this.platform.dispose : this.stemMesh.dispose();
 }
 
 let petalMesh;
@@ -205,74 +232,17 @@ let flowers = [];
 	stemMesh.scaling.scaleInPlace(1300);
 	stemModelData.meshes.forEach((mesh) => {mesh.isVisible = false});
 
-	flowers.push(Flower.createWithStem(0, 0, 0));
+	flowers.push(Flower.createWithPlatform(0, 0, 0));
 
-	for (let i = 0; i < 9; ++i) {
-		flowers.push(Flower.createWithStem());
+	for (let i = 0; i < 20; ++i) {
+		if (i % 2 === 0) {
+			flowers.push(Flower.createWithPlatform());
+		} else {
+			flowers.push(Flower.createWithStem());
+		}
 	}
 })();
 
-// //wind stuff
-// //wind streaks are essentially cylinders, so keep that in mind
-// let wind = {
-// 	count: 10,
-// 	minSpeed: 3,
-// 	maxSpeed: 7,
-// 	minSize: 5,
-// 	maxSize: 15,
-// 	minWidth: 0.1,
-// 	maxWidth: 0.1,
-// 	minAlpha: 0.1,
-// 	maxAlpha: 0.3,
-// 	streaks: [],
-// 	boundSize: new BABYLON.Vector3(100, 100, 100), // wind streaks exist within this rectangle centered at (0, 0, 0)
-// };
-
-// wind.rootMesh = new BABYLON.MeshBuilder.CreateCylinder("wind", { height: 1, diameter: wind.width}, scene);
-// wind.rootMesh.rotation.z = Math.PI/2;
-// let mat = new BABYLON.StandardMaterial("mat", scene);
-// mat.alpha = 0.1;
-// wind.rootMesh.material = mat;
-// wind.rootMesh.isVisible = false;
-
-// for (let i = 0; i < wind.count; ++i) {
-// 	let streak = wind.rootMesh.createInstance("streak" + i);
-// 	streak.velocity = new BABYLON.Vector3(0, 0, 0);
-
-// 	respawnStreak(streak);
-// 	wind.streaks.push(streak);
-// }
-
-// function boundContainsStreak(streak) {
-// 	let pos = streak.position;
-// 	let size = wind.boundSize;
-// 	return pos.x > -size.x/2 && pos.x < size.x/2 && pos.y > -size.y/2 && pos.y < size.y/2 && pos.z > -size.z/2 && pos.z < size.z/2;
-// }
-// function respawnStreak(streak) {
-// 	let y = (Math.random() - 0.5) * wind.boundSize.y;
-// 	let z = (Math.random() - 0.5) * wind.boundSize.z;
-// 	streak.position.set(-wind.boundSize.x/2, y, z);
-
-// 	streak.material.alpha = randVal(wind.minAlpha, wind.maxAlpha);
-// 	streak.scaling.y = randVal(wind.minSize, wind.maxSize);
-// 	streak.scaling.x = randVal(wind.minWidth, wind.maxWidth);
-// 	streak.scaling.z = randVal(wind.minWidth, wind.maxWidth);
-// 	streak.velocity.x = randVal(wind.minSpeed, wind.maxSpeed);
-// }
-// function updateWind() {
-// 	for (let streak of wind.streaks){
-// 		if (streak.position){
-// 			streak.position.addInPlace(streak.velocity);
-// 		}
-// 		if (!boundContainsStreak(streak)) {
-// 			respawnStreak(streak);
-// 		}
-// 	}
-// }
-
-// scene.onBeforeRenderObservable.add(() => { // gets called each frame right before painting the screen
-// 	updateWind();
-// });
 engine.runRenderLoop(function () { // gets called each frame
 	scene.render();
 });
