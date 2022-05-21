@@ -7,7 +7,7 @@ const engine = new BABYLON.Engine(canvas);
 const scene = new BABYLON.Scene(engine);
 scene.maxSimultaneousLights = 1;
 scene.ambientColor = new BABYLON.Color3(1, 1, 1);
-scene.clearColor = new BABYLON.Color3(0, 0.1, 0.1)
+scene.clearColor = new BABYLON.Color3(0, 0.7, 0.7)
 
 const camera = new BABYLON.ArcRotateCamera("camera", 0, 0, 10, new BABYLON.Vector3(0, 0, 0), scene);
 camera.attachControl(canvas, true);
@@ -55,7 +55,7 @@ function setLightGroundColor(col) {
 class Flower {
 	static flowerCount = 0;
 
-	static createWithStem(x = randVal(-250, 250), y = randVal(-20, 20), z = randVal(-250, 250), centerDiffuseColor = color(255, 255, 0),
+	static createWithStem(x = randVal(-150, 150), y = randVal(-20, 20), z = randVal(-150, 150), centerDiffuseColor = color(255, 255, 0),
 				petalDiffuseColor = color(200, 0, 100), petalCount, petalsInRow, rowHeight, petalRandomness, petalFoldMag) {
 		let flower = new Flower(centerDiffuseColor);
 		flower.initValues(petalCount, petalsInRow, rowHeight, petalRandomness, petalFoldMag);
@@ -67,8 +67,8 @@ class Flower {
 
 		return flower;
 	}
-	static createWithPlatform(x = randVal(-250, 250), y = randVal(-20, 20), z = randVal(-250, 250), centerDiffuseColor = color(255, 255, 0),
-			petalDiffuseColor = color(200, 0, 100), platformDiffuseColor = color(0, randVal(50, 255, 0), randVal(50, 255)),
+	static createWithPlatform(x = randVal(-150, 150), y = randVal(-20, 20), z = randVal(-150, 150), centerDiffuseColor = color(255, 255, 0),
+			petalDiffuseColor = color(200, 0, 100), platformDiffuseColor = color(100, 40, 0),
 			platformWidth, platformHeight, platformDepth, petalCount, petalsInRow, rowHeight, petalRandomness, petalFoldMag) {
 		let flower = new Flower(centerDiffuseColor);
 		flower.initValues(platformWidth, platformHeight, platformDepth, petalCount, petalsInRow, rowHeight, petalRandomness, petalFoldMag);
@@ -88,14 +88,7 @@ class Flower {
 		this.flowerCenter.material.diffuseColor = rgb2color3(centerDiffuseColor);
 
 		this.petals = [];
-
-		// this.initValues();
-
-		// this.initPetal(petalDiffuseColor);
-		// this.updatePetal();
-		
-		// this.initStem();
-		// this.updateStem();
+		this.foldAnimationInc = Math.random();
 	}
 }
 Flower.prototype.initValues = function (platformWidth = 5, platformHeight = 1, platformDepth = 5, petalCount = 40, petalsInRow = 4,
@@ -168,7 +161,7 @@ Flower.prototype.updatePetalFold = function (mag) {
 		petal.position.z = (1.5 + this.petalFoldMag) * Math.sin(petal.theta);
 
 		// angle petal towards center of transformation and the cylinder center
-		let angle = Math.atan2(cot.position.x, cot.position.z);
+		let angle = Math.atan2(cot.position.x - this.flowerCenter.position.x, cot.position.z - this.flowerCenter.position.z);
 		let toRotate = angle + Math.PI; // shifts values that go from -pi to pi, to 0 to 2*pi
 		petal.rotation.y = toRotate;
 
@@ -214,6 +207,10 @@ Flower.prototype.dispose = function () {
 	this.petals.forEach( petal => petal.dispose(true, true) );
 	this.platform ? this.platform.dispose(true, true) : this.stemMesh.dispose(true, true);
 }
+Flower.prototype.foldAnimationUpdate = function() {
+	++this.foldAnimationInc;
+	this.updatePetalFold(Math.sin(this.foldAnimationInc/100));
+}
 
 let petalMesh;
 let stemMesh;
@@ -248,7 +245,7 @@ let clouds = [];
 	cloudMesh.isVisible = false;
 	cloudMesh.scaling.scaleInPlace(100);
 
-	for (let i = 0; i < 300; ++i) {
+	for (let i = 0; i < 200; ++i) {
 		let instance = cloudMesh.createInstance("cloud" + i);
 		instance.position.x = randVal(-250, 250);
 		instance.position.y = randVal(50, 150);
@@ -257,11 +254,10 @@ let clouds = [];
 		clouds.push(i);
 	}
 
-	let ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 500, height: 500}, scene);
+	let ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 300, height: 300}, scene);
 	ground.position.y = -50;
 	ground.material = new BABYLON.StandardMaterial("groundMaterial", scene);
-	ground.material.diffuseColor = new BABYLON.Color3(0, 0.1, 0);
-	
+	ground.material.diffuseColor = new BABYLON.Color3(0, 0.3, 0);
 })();
 
 //wind stuff
@@ -327,6 +323,7 @@ scene.onBeforeRenderObservable.add(() => { // gets called each frame right befor
 });
 
 engine.runRenderLoop(function () { // gets called each frame
+	flowers.forEach(flower => flower.foldAnimationUpdate());
 	scene.render();
 });
 
